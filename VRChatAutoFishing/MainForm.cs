@@ -941,7 +941,7 @@ namespace VRChatAutoFishing
             MaximizeBox = false;
             Name = "MainForm";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "自动钓鱼v1.5.1";
+            Text = "自动钓鱼v1.5.2";
             FormClosing += MainForm_FormClosing;
             Load += MainForm_Load;
             ((System.ComponentModel.ISupportInitialize)trackBarCastTime).EndInit();
