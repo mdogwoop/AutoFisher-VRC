@@ -19,6 +19,8 @@ namespace VRChatAutoFishing
             kReeling,
             kFinishedReel,
             kStopped,
+            kReCasting,
+            kReReeling,
             // Exceptions
             kTimeoutReelSingle,
             kTimeoutReel,
@@ -232,6 +234,8 @@ namespace VRChatAutoFishing
                 ActionState.kReeling => "收杆中",
                 ActionState.kFinishedReel => "收杆完成",
                 ActionState.kStopped => "已停止",
+                ActionState.kReCasting => "重新抛竿",
+                ActionState.kReReeling => "重新收杆",
 
                 ActionState.kTimeoutReelSingle => "收杆超时(单次)",
                 ActionState.kTimeoutReel => "收杆超时",
@@ -427,7 +431,7 @@ namespace VRChatAutoFishing
                 _isProtected = true;
 
                 // 第一步：抛竿2秒确保线收到位
-                _currentAction = "重钓抛竿";
+                _currentAction = ActionState.kReCasting;
                 UpdateStatusText(_currentAction);
                 SendClick(true);
 
@@ -443,7 +447,7 @@ namespace VRChatAutoFishing
                 SendClick(false);
 
                 // 第二步：收杆20秒确保线完全收回
-                _currentAction = "重钓收杆";
+                _currentAction = ActionState.kReReeling;
                 UpdateStatusText(_currentAction);
                 SendClick(true);
 
@@ -459,25 +463,6 @@ namespace VRChatAutoFishing
                 SendClick(false);
 
                 // 第三步：重新开始钓鱼流程
-                if (!_isClosing)
-                {
-                    PerformCast();
-                }
-            }
-            finally
-            {
-                _isProtected = false;
-            }
-        }
-
-        private void ForceReel()
-        {
-            if (_isProtected || _isClosing) return;
-
-            try
-            {
-                _isProtected = true;
-                PerformReel();
                 if (!_isClosing)
                 {
                     PerformCast();
@@ -559,7 +544,7 @@ namespace VRChatAutoFishing
                 else
                 {
                     _currentAction = ActionState.kTimeoutReel;
-                    _notificationManager.NotifyAll("收杆超时，未检测到SAVED DATA事件！请检查游戏状态。");
+                    _notificationManager.NotifyAll("收杆超时，未检测到SAVED DATA事件！如果此事件持续，请检查游戏状态。");
                 }
                 _showingFishCount = false;
                 UpdateStatusText(_currentAction);

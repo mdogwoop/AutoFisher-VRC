@@ -36,41 +36,31 @@ jobs:
 
       - name: Restore
         working-directory: VRChatAutoFishing
-        run: dotnet restore "VRChatAutoFishing.csproj"
+        run: dotnet restore -r ${{ matrix.rid }} "VRChatAutoFishing.csproj"
 
-      - name: Build
-        working-directory: VRChatAutoFishing
-        run: dotnet build "VRChatAutoFishing.csproj" --configuration Release --no-restore
-
-      - name: Publish single-file self-contained
+      - name: Publish
         working-directory: VRChatAutoFishing
         run: |
-          dotnet publish "VRChatAutoFishing.csproj" -c Release -r ${{ matrix.rid }} --self-contained false -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o ./publish
+          dotnet publish "VRChatAutoFishing.csproj" -c Release  -p:DebugType=None -p:DebugSymbols=false -o ./publish --no-restore
+          dotnet publish "VRChatAutoFishing.csproj" -c ReleaseWithRuntime  -p:DebugType=None -p:DebugSymbols=false -o ./publish --no-restore
 
-      - name: Package artifact
-        working-directory: VRChatAutoFishing
-        shell: pwsh
-        run: |
-          Write-Host 'Checking publish output...'
-          if (-not (Test-Path -Path ./publish)) {
-            Write-Host 'Publish directory not found. Listing repository:'
-            Get-ChildItem -Force -Recurse | Select-Object -First 100
-            exit 1
-          }
-          $exe = Get-ChildItem -Path ./publish -Recurse -Filter '*.exe' | Select-Object -First 1
-          if (-not $exe) {
-            Write-Host 'No exe found in publish directory. Contents of publish:'
-            Get-ChildItem -Path ./publish -Recurse -Force | Select-Object -First 200
-            exit 1
-          }
-          $dest = Join-Path $env:GITHUB_WORKSPACE ('release-' + "${{ matrix.name }}" + '.zip')
-          Write-Host "Compressing executable $($exe.FullName) to $dest"
-          Compress-Archive -Path $exe.FullName -DestinationPath $dest -Force
-
-      - name: Upload Build Artifact
+      - name: Upload Build Artifact - Non-Runtime
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.name }}
-          path: ${{ github.workspace }}/release-${{ matrix.name }}.zip
+          path: ${{ github.workspace }}/VRChatAutoFishing/publish/VRChatAutoFishing.exe
 
-  # release job removed: workflow now only builds and uploads artifacts
+      - name: Upload Build Artifact - With-Runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.name }}-with-runtime
+          path: ${{ github.workspace }}/VRChatAutoFishing/publish/VRChatAutoFishingOneClick.exe
+      
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          files: |
+            ${{ github.workspace }}/VRChatAutoFishing/publish/VRChatAutoFishing.exe
+            ${{ github.workspace }}/VRChatAutoFishing/publish/VRChatAutoFishingOneClick.exe
+
