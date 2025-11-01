@@ -15,27 +15,26 @@
     <FileVersion>1.5.0.0</FileVersion>
     <Configurations>Debug;Release;ReleaseWithRuntime</Configurations>
     <ApplicationIcon>app.ico</ApplicationIcon>
-	 <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRun>true</PublishReadyToRun>
   </PropertyGroup>
 
   <!-- 配置带 Runtime 的版本 -->
   <PropertyGroup Condition="'$(Configuration)' == 'ReleaseWithRuntime'">
-	<AssemblyName>VRChatAutoFishingOneClick</AssemblyName>
+    <AssemblyName>VRChatAutoFishingOneClick</AssemblyName>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained> <!-- 包含 .NET Runtime -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    
-	<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <!-- 配置不带 Runtime 的版本 -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>false</SelfContained> <!-- 不包含 .NET Runtime -->
-	<AssemblyName>VRChatAutoFishing</AssemblyName>
+    <AssemblyName>VRChatAutoFishing</AssemblyName>
   </PropertyGroup>
 
-  
   <ItemGroup>
     <None Remove="Resources\help_image1.png" />
     <None Remove="Resources\help_image2.png" />
