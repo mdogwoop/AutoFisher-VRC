@@ -42,20 +42,20 @@ namespace VRChatAutoFishing
         private bool _isClosing = false;
         private ManualResetEvent _stopEvent = new(false);
 
-        // Ïß³Ì°²È«µÄ²ÎÊı´æ´¢
+        // çº¿ç¨‹å®‰å…¨çš„å‚æ•°å­˜å‚¨
         private double _castTime = 1.7;
         private const double TIMEOUT_MINUTES = 3.0;
 
-        // µöÓãÍ³¼ÆÏà¹Ø±äÁ¿
+        // é’“é±¼ç»Ÿè®¡ç›¸å…³å˜é‡
         private int _fishCount = 0;
         private bool _showingFishCount = false;
         private DateTime _lastStatusSwitchTime = DateTime.Now;
 
-        // ÊÕ¸Ë×´Ì¬¸ú×Ù
+        // æ”¶æ†çŠ¶æ€è·Ÿè¸ª
         private int _savedDataCount = 0;
         private DateTime _firstSavedDataTime;
 
-        // ÌØÊâÅ×¸ÍÏà¹Ø±äÁ¿
+        // ç‰¹æ®ŠæŠ›ç«¿ç›¸å…³å˜é‡
         private double _actualCastTime = 0;
         private double _reelBackTime = 0;
 
@@ -110,6 +110,8 @@ namespace VRChatAutoFishing
         {
             txtWebhookURL.Enabled = enabled;
             txtWebHookBodyTemplate.Enabled = enabled;
+            chbUseWebhookProxy.Enabled = enabled;
+            UpdateWebhookProxyInputState(enabled && chbUseWebhookProxy.Checked);
         }
 
         private bool DoSetupWebHookConfiguration()
@@ -119,14 +121,16 @@ namespace VRChatAutoFishing
             {
                 string url = txtWebhookURL.Text.Trim();
                 string template = txtWebHookBodyTemplate.Text.Trim();
+                bool useProxy = chbUseWebhookProxy.Checked;
+                string proxyAddress = txtWebhookProxy.Text.Trim();
                 try
                 {
-                    var webhookHandler = new WebhookNotificationHandler(url, template);
+                    var webhookHandler = new WebhookNotificationHandler(url, template, useProxy, proxyAddress);
                     _notificationManager.AddHandler(webhookHandler);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"ÅäÖÃ WebHook Í¨ÖªÊ§°Ü: {ex.Message}", "´íÎó", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show($"é…ç½® WebHook é€šçŸ¥å¤±è´¥: {ex.Message}", "é”™è¯¯", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
                 }
             }
@@ -143,11 +147,11 @@ namespace VRChatAutoFishing
                 return false;
             }
             // Test Notifications
-            var rc = _notificationManager.NotifyAll("×Ô¶¯µöÓã³ÌĞòÒÑÆô¶¯£¡");
+            var rc = _notificationManager.NotifyAll("è‡ªåŠ¨é’“é±¼ç¨‹åºå·²å¯åŠ¨ï¼");
             if (_notificationManager.HasHandlers() && !rc.success)
             {
                 DoReleaseWebHookConfiguration();
-                MessageBox.Show($"ÎŞ·¨ÆôÓÃ×Ô¶¯µöÓã£¬WebHook ÅäÖÃËÆºõÓĞÎó£º{rc.message}", "´íÎó", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"æ— æ³•å¯ç”¨è‡ªåŠ¨é’“é±¼ï¼ŒWebHook é…ç½®ä¼¼ä¹æœ‰è¯¯ï¼š{rc.message}", "é”™è¯¯", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
             return true;
@@ -190,7 +194,7 @@ namespace VRChatAutoFishing
                 EmergencyRelease();
                 DoReleaseWebHookConfiguration();
             }
-            btnToggle.Text = _isRunning ? "Í£Ö¹" : "¿ªÊ¼";
+            btnToggle.Text = _isRunning ? "åœæ­¢" : "å¼€å§‹";
         }
 
         private void UpdateStatusDisplay(object sender, ElapsedEventArgs e)
@@ -216,7 +220,7 @@ namespace VRChatAutoFishing
                     {
                         _showingFishCount = true;
                         _lastStatusSwitchTime = DateTime.Now;
-                        UpdateStatusText($"ÒÑµö:{_fishCount}");
+                        UpdateStatusText($"å·²é’“:{_fishCount}");
                     }
                 }
             }
@@ -226,20 +230,20 @@ namespace VRChatAutoFishing
         {
             string text = state switch
             {
-                ActionState.kIdle => "¿ÕÏĞ",
-                ActionState.kPreparing => "×¼±¸ÖĞ",
-                ActionState.kStartToCast => "¿ªÊ¼Å×¸Í",
-                ActionState.kCasting => "Å×¸ÍÖĞ",
-                ActionState.kWaitForFish => "µÈ´ıÓãÉÏ¹³",
-                ActionState.kReeling => "ÊÕ¸ËÖĞ",
-                ActionState.kFinishedReel => "ÊÕ¸ËÍê³É",
-                ActionState.kStopped => "ÒÑÍ£Ö¹",
-                ActionState.kReCasting => "ÖØĞÂÅ×¸Í",
-                ActionState.kReReeling => "ÖØĞÂÊÕ¸Ë",
+                ActionState.kIdle => "ç©ºé—²",
+                ActionState.kPreparing => "å‡†å¤‡ä¸­",
+                ActionState.kStartToCast => "å¼€å§‹æŠ›ç«¿",
+                ActionState.kCasting => "æŠ›ç«¿ä¸­",
+                ActionState.kWaitForFish => "ç­‰å¾…é±¼ä¸Šé’©",
+                ActionState.kReeling => "æ”¶æ†ä¸­",
+                ActionState.kFinishedReel => "æ”¶æ†å®Œæˆ",
+                ActionState.kStopped => "å·²åœæ­¢",
+                ActionState.kReCasting => "é‡æ–°æŠ›ç«¿",
+                ActionState.kReReeling => "é‡æ–°æ”¶æ†",
 
-                ActionState.kTimeoutReelSingle => "ÊÕ¸Ë³¬Ê±(µ¥´Î)",
-                ActionState.kTimeoutReel => "ÊÕ¸Ë³¬Ê±",
-                _ => "Î´Öª×´Ì¬",
+                ActionState.kTimeoutReelSingle => "æ”¶æ†è¶…æ—¶(å•æ¬¡)",
+                ActionState.kTimeoutReel => "æ”¶æ†è¶…æ—¶",
+                _ => "æœªçŸ¥çŠ¶æ€",
             };
             UpdateStatusText(text);
         }
@@ -256,7 +260,7 @@ namespace VRChatAutoFishing
                     }
                     catch (ObjectDisposedException)
                     {
-                        // ºöÂÔÒì³£
+                        // å¿½ç•¥å¼‚å¸¸
                     }
                 }
                 return;
@@ -301,7 +305,7 @@ namespace VRChatAutoFishing
             {
                 if (!_isClosing)
                 {
-                    HandleError($"µöÓãÏß³Ì´íÎó: {ex.Message}");
+                    HandleError($"é’“é±¼çº¿ç¨‹é”™è¯¯: {ex.Message}");
                 }
             }
         }
@@ -363,7 +367,7 @@ namespace VRChatAutoFishing
                     }
                     catch (ObjectDisposedException)
                     {
-                        // ºöÂÔÒì³£
+                        // å¿½ç•¥å¼‚å¸¸
                     }
                 }
                 return;
@@ -389,7 +393,7 @@ namespace VRChatAutoFishing
                     }
                     catch (ObjectDisposedException)
                     {
-                        // ºöÂÔÒì³£
+                        // å¿½ç•¥å¼‚å¸¸
                     }
                 }
                 return;
@@ -397,7 +401,7 @@ namespace VRChatAutoFishing
 
             if (!_isClosing)
             {
-                lblCastValue.Text = $"{GetCastTime():0.0}Ãë";
+                lblCastValue.Text = $"{GetCastTime():0.0}ç§’";
             }
         }
 
@@ -421,7 +425,7 @@ namespace VRChatAutoFishing
             }
         }
 
-        // ĞÂÔö£º³¬Ê±ÖØµö»úÖÆ - È·±£ÏßÊÕµ½Î»
+        // æ–°å¢ï¼šè¶…æ—¶é‡é’“æœºåˆ¶ - ç¡®ä¿çº¿æ”¶åˆ°ä½
         private void PerformTimeoutReel()
         {
             if (_isProtected || _isClosing) return;
@@ -430,7 +434,7 @@ namespace VRChatAutoFishing
             {
                 _isProtected = true;
 
-                // µÚÒ»²½£ºÅ×¸Í2ÃëÈ·±£ÏßÊÕµ½Î»
+                // ç¬¬ä¸€æ­¥ï¼šæŠ›ç«¿2ç§’ç¡®ä¿çº¿æ”¶åˆ°ä½
                 _currentAction = ActionState.kReCasting;
                 UpdateStatusText(_currentAction);
                 SendClick(true);
@@ -446,7 +450,7 @@ namespace VRChatAutoFishing
                 }
                 SendClick(false);
 
-                // µÚ¶ş²½£ºÊÕ¸Ë20ÃëÈ·±£ÏßÍêÈ«ÊÕ»Ø
+                // ç¬¬äºŒæ­¥ï¼šæ”¶æ†20ç§’ç¡®ä¿çº¿å®Œå…¨æ”¶å›
                 _currentAction = ActionState.kReReeling;
                 UpdateStatusText(_currentAction);
                 SendClick(true);
@@ -462,7 +466,7 @@ namespace VRChatAutoFishing
                 }
                 SendClick(false);
 
-                // µÚÈı²½£ºÖØĞÂ¿ªÊ¼µöÓãÁ÷³Ì
+                // ç¬¬ä¸‰æ­¥ï¼šé‡æ–°å¼€å§‹é’“é±¼æµç¨‹
                 if (!_isClosing)
                 {
                     PerformCast();
@@ -484,7 +488,7 @@ namespace VRChatAutoFishing
             _isReeling = true;
             SendClick(true);
 
-            // ÖØÖÃÊÕ¸Ë×´Ì¬
+            // é‡ç½®æ”¶æ†çŠ¶æ€
             _savedDataCount = 0;
             _firstSavedDataTime = DateTime.MinValue;
 
@@ -500,7 +504,7 @@ namespace VRChatAutoFishing
                     {
                         _savedDataCount = 1;
                         _firstSavedDataTime = DateTime.Now;
-                        Console.WriteLine("¼ì²âµ½µÚÒ»´ÎSAVED DATA");
+                        Console.WriteLine("æ£€æµ‹åˆ°ç¬¬ä¸€æ¬¡SAVED DATA");
                     }
                     else if (_savedDataCount == 1)
                     {
@@ -509,7 +513,7 @@ namespace VRChatAutoFishing
                         {
                             _savedDataCount = 2;
                             secondSavedDataDetected = true;
-                            Console.WriteLine($"¼ì²âµ½µÚ¶ş´ÎSAVED DATA£¬¼ä¸ô: {interval:F1}Ãë");
+                            Console.WriteLine($"æ£€æµ‹åˆ°ç¬¬äºŒæ¬¡SAVED DATAï¼Œé—´éš”: {interval:F1}ç§’");
                             break;
                         }
                     }
@@ -517,7 +521,7 @@ namespace VRChatAutoFishing
 
                 if (_savedDataCount == 1 && (DateTime.Now - _firstSavedDataTime).TotalSeconds > 10)
                 {
-                    Console.WriteLine("µÚÒ»´ÎSAVED DATAºó10ÃëÄÚÎ´¼ì²âµ½µÚ¶ş´Î£¬ÊÓÎª³¬Ê±");
+                    Console.WriteLine("ç¬¬ä¸€æ¬¡SAVED DATAå10ç§’å†…æœªæ£€æµ‹åˆ°ç¬¬äºŒæ¬¡ï¼Œè§†ä¸ºè¶…æ—¶");
                     break;
                 }
 
@@ -539,12 +543,12 @@ namespace VRChatAutoFishing
                 }
                 else if (_savedDataCount == 1)
                 {
-                    _currentAction = ActionState.kTimeoutReelSingle; // ĞŞ¸ÄÎªÃ¶¾ÙÖµ
+                    _currentAction = ActionState.kTimeoutReelSingle; // ä¿®æ”¹ä¸ºæšä¸¾å€¼
                 }
                 else
                 {
                     _currentAction = ActionState.kTimeoutReel;
-                    _notificationManager.NotifyAll("ÊÕ¸Ë³¬Ê±£¬Î´¼ì²âµ½SAVED DATAÊÂ¼ş£¡Èç¹û´ËÊÂ¼ş³ÖĞø£¬Çë¼ì²éÓÎÏ·×´Ì¬¡£");
+                    _notificationManager.NotifyAll("æ”¶æ†è¶…æ—¶ï¼Œæœªæ£€æµ‹åˆ°SAVED DATAäº‹ä»¶ï¼å¦‚æœæ­¤äº‹ä»¶æŒç»­ï¼Œè¯·æ£€æŸ¥æ¸¸æˆçŠ¶æ€ã€‚");
                 }
                 _showingFishCount = false;
                 UpdateStatusText(_currentAction);
@@ -557,7 +561,7 @@ namespace VRChatAutoFishing
 
             try
             {
-                Console.WriteLine($"Ö´ĞĞ»ØÀ­¶¯×÷£¬³ÖĞøÊ±¼ä: {_reelBackTime}Ãë");
+                Console.WriteLine($"æ‰§è¡Œå›æ‹‰åŠ¨ä½œï¼ŒæŒç»­æ—¶é—´: {_reelBackTime}ç§’");
 
                 SendClick(true);
 
@@ -574,11 +578,11 @@ namespace VRChatAutoFishing
 
                 SendClick(false);
 
-                Console.WriteLine("»ØÀ­¶¯×÷Íê³É");
+                Console.WriteLine("å›æ‹‰åŠ¨ä½œå®Œæˆ");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"»ØÀ­¶¯×÷´íÎó: {ex.Message}");
+                Console.WriteLine($"å›æ‹‰åŠ¨ä½œé”™è¯¯: {ex.Message}");
             }
         }
 
@@ -629,7 +633,7 @@ namespace VRChatAutoFishing
                     _reelBackTime = 0.3;
                 }
 
-                Console.WriteLine($"ÌØÊâÅ×¸Í: Å×{_actualCastTime}Ãë, {_reelBackTime}Ãëºó»ØÀ­{_reelBackTime}Ãë");
+                Console.WriteLine($"ç‰¹æ®ŠæŠ›ç«¿: æŠ›{_actualCastTime}ç§’, {_reelBackTime}ç§’åå›æ‹‰{_reelBackTime}ç§’");
 
                 SendClick(true);
 
@@ -708,7 +712,7 @@ namespace VRChatAutoFishing
         {
             if ((DateTime.Now - _lastCastTime).TotalSeconds < 3.0)
             {
-                Console.WriteLine("ºöÂÔÅ×¸Íºó3ÃëÄÚµÄSAVED DATAÊÂ¼ş");
+                Console.WriteLine("å¿½ç•¥æŠ›ç«¿å3ç§’å†…çš„SAVED DATAäº‹ä»¶");
                 return;
             }
 
@@ -761,7 +765,7 @@ namespace VRChatAutoFishing
                     }
                     catch
                     {
-                        // ºöÂÔÖĞÖ¹Òì³£
+                        // å¿½ç•¥ä¸­æ­¢å¼‚å¸¸
                     }
                 }
             }
@@ -780,16 +784,68 @@ namespace VRChatAutoFishing
         private void HandleError(string errorMessage)
         {
             if (
-                !_notificationManager.NotifyAll($"´íÎó: {errorMessage}").success)
-            {
-                MessageBox.Show(errorMessage, "´íÎó", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+        private void chbUseWebhookProxy_CheckedChanged(object sender, EventArgs e)
+        {
+            bool enableProxyInput = chbEnableNotification.Checked && chbUseWebhookProxy.Checked;
+            UpdateWebhookProxyInputState(enableProxyInput);
         }
 
-
-        private void chbEnableNotification_CheckedChanged(object sender, EventArgs e)
+        private void UpdateWebhookProxyInputState(bool enabled)
         {
-            DoEnableWebHookConfigurationUI(chbEnableNotification.Checked);
+            txtWebhookProxy.Enabled = enabled;
+            lblWebhookProxy.Enabled = enabled;
+        }
+
+        private CheckBox chbUseWebhookProxy;
+        private Label lblWebhookProxy;
+        private TextBox txtWebhookProxy;
+            chbUseWebhookProxy = new CheckBox();
+            lblWebhookProxy = new Label();
+            txtWebhookProxy = new TextBox();
+            btnToggle.Location = new Point(95, 298);
+            btnHelp.Location = new Point(15, 298);
+            lblStatus.Location = new Point(170, 305);
+            // chbUseWebhookProxy
+            // 
+            chbUseWebhookProxy.AutoSize = true;
+            chbUseWebhookProxy.Enabled = false;
+            chbUseWebhookProxy.Location = new Point(15, 126);
+            chbUseWebhookProxy.Name = "chbUseWebhookProxy";
+            chbUseWebhookProxy.Size = new Size(164, 21);
+            chbUseWebhookProxy.TabIndex = 8;
+            chbUseWebhookProxy.Text = "Ê¹ WebHook HTTP ";
+            chbUseWebhookProxy.UseVisualStyleBackColor = true;
+            chbUseWebhookProxy.CheckedChanged += chbUseWebhookProxy_CheckedChanged;
+            // 
+            // lblWebhookProxy
+            // 
+            lblWebhookProxy.AutoSize = true;
+            lblWebhookProxy.Enabled = false;
+            lblWebhookProxy.Location = new Point(15, 153);
+            lblWebhookProxy.Name = "lblWebhookProxy";
+            lblWebhookProxy.Size = new Size(74, 17);
+            lblWebhookProxy.TabIndex = 10;
+            lblWebhookProxy.Text = "HTTP :";
+            // 
+            // txtWebhookProxy
+            // 
+            txtWebhookProxy.Enabled = false;
+            txtWebhookProxy.Location = new Point(15, 173);
+            txtWebhookProxy.Name = "txtWebhookProxy";
+            txtWebhookProxy.PlaceholderText = "http://127.0.0.1:8888";
+            txtWebhookProxy.Size = new Size(233, 23);
+            txtWebhookProxy.TabIndex = 9;
+            // 
+            lblWebHookBodyTemplate.Location = new Point(12, 204);
+            lblWebHookBodyTemplate.TabIndex = 10;
+            txtWebHookBodyTemplate.Location = new Point(15, 228);
+            txtWebHookBodyTemplate.Size = new Size(233, 60);
+            txtWebHookBodyTemplate.TabIndex = 11;
+            txtWebHookBodyTemplate.Text = "{\\"msg_type\\":\\"text\\",\\"content\\":{\\"text\\":\\"{{message}}\\"}}";
+            ClientSize = new Size(260, 340);
+            Controls.Add(txtWebhookProxy);
+            Controls.Add(lblWebhookProxy);
+            Controls.Add(chbUseWebhookProxy);
         }
 
         // Windows Form Designer generated code
@@ -838,7 +894,7 @@ namespace VRChatAutoFishing
             lblCastValue.Name = "lblCastValue";
             lblCastValue.Size = new Size(40, 20);
             lblCastValue.TabIndex = 2;
-            lblCastValue.Text = "1.7Ãë";
+            lblCastValue.Text = "1.7ç§’";
             // 
             // btnToggle
             // 
@@ -846,7 +902,7 @@ namespace VRChatAutoFishing
             btnToggle.Name = "btnToggle";
             btnToggle.Size = new Size(70, 30);
             btnToggle.TabIndex = 4;
-            btnToggle.Text = "¿ªÊ¼";
+            btnToggle.Text = "å¼€å§‹";
             btnToggle.Click += btnToggle_Click;
             // 
             // btnHelp
@@ -855,7 +911,7 @@ namespace VRChatAutoFishing
             btnHelp.Name = "btnHelp";
             btnHelp.Size = new Size(70, 30);
             btnHelp.TabIndex = 3;
-            btnHelp.Text = "ËµÃ÷";
+            btnHelp.Text = "è¯´æ˜";
             btnHelp.Click += btnHelp_Click;
             // 
             // lblStatus
@@ -864,7 +920,7 @@ namespace VRChatAutoFishing
             lblStatus.Name = "lblStatus";
             lblStatus.Size = new Size(80, 20);
             lblStatus.TabIndex = 5;
-            lblStatus.Text = "[×´Ì¬]";
+            lblStatus.Text = "[çŠ¶æ€]";
             // 
             // label1
             // 
@@ -872,7 +928,7 @@ namespace VRChatAutoFishing
             label1.Name = "label1";
             label1.Size = new Size(60, 20);
             label1.TabIndex = 0;
-            label1.Text = "ĞîÁ¦Ê±¼ä:";
+            label1.Text = "è“„åŠ›æ—¶é—´:";
             // 
             // chbEnableNotification
             // 
@@ -881,7 +937,7 @@ namespace VRChatAutoFishing
             chbEnableNotification.Name = "chbEnableNotification";
             chbEnableNotification.Size = new Size(178, 21);
             chbEnableNotification.TabIndex = 6;
-            chbEnableNotification.Text = "ÆôÓÃ´íÎóÊ± WebHook Í¨Öª";
+            chbEnableNotification.Text = "å¯ç”¨é”™è¯¯æ—¶ WebHook é€šçŸ¥";
             chbEnableNotification.UseVisualStyleBackColor = true;
             chbEnableNotification.CheckedChanged += chbEnableNotification_CheckedChanged;
             // 
@@ -909,7 +965,7 @@ namespace VRChatAutoFishing
             lblWebHookBodyTemplate.Name = "lblWebHookBodyTemplate";
             lblWebHookBodyTemplate.Size = new Size(72, 17);
             lblWebHookBodyTemplate.TabIndex = 9;
-            lblWebHookBodyTemplate.Text = "\u007fÇëÇóÌåÄ£°å";
+            lblWebHookBodyTemplate.Text = "\u007fè¯·æ±‚ä½“æ¨¡æ¿";
             // 
             // txtWebHookBodyTemplate
             // 
@@ -941,7 +997,7 @@ namespace VRChatAutoFishing
             MaximizeBox = false;
             Name = "MainForm";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "×Ô¶¯µöÓãv1.5.2";
+            Text = "è‡ªåŠ¨é’“é±¼v1.5.2";
             FormClosing += MainForm_FormClosing;
             Load += MainForm_Load;
             ((System.ComponentModel.ISupportInitialize)trackBarCastTime).EndInit();

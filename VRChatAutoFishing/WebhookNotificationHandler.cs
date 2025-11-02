@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -10,11 +11,36 @@ namespace VRChatAutoFishing
     {
         private readonly string _webhookUrl;
         private readonly string _template;
+        private readonly bool _useProxy;
+        private readonly IWebProxy? _customProxy;
 
-        public WebhookNotificationHandler(string webhookUrl, string template)
+        public WebhookNotificationHandler(string webhookUrl, string template, bool useProxy, string proxyAddress)
         {
             if (string.IsNullOrWhiteSpace(webhookUrl))
-                throw new ArgumentException("Webhook URL 不能为空", nameof(webhookUrl));
+            _useProxy = useProxy;
+
+            if (_useProxy && !string.IsNullOrWhiteSpace(proxyAddress))
+            {
+                try
+                {
+                    _customProxy = new WebProxy(proxyAddress);
+                }
+                catch (Exception ex) when (ex is UriFormatException || ex is ArgumentException)
+                {
+                    throw new ArgumentException($"效拇址: {ex.Message}", nameof(proxyAddress));
+                }
+            }
+                var handler = new HttpClientHandler();
+                if (!_useProxy)
+                {
+                    handler.UseProxy = false;
+                }
+                else if (_customProxy != null)
+                {
+                    handler.Proxy = _customProxy;
+                }
+
+                using var client = new HttpClient(handler);
 
             _webhookUrl = webhookUrl;
             _template = template;
@@ -31,13 +57,13 @@ namespace VRChatAutoFishing
                 var response = await client.PostAsync(_webhookUrl, content);
                 if (!response.IsSuccessStatusCode)
                 {
-                    return new(false, $"Webhook 通知失败: {response.StatusCode}, Body: {response.Content}");
+                    return new(false, $"Webhook 閫氱煡澶辫触: {response.StatusCode}, Body: {response.Content}");
                 }
                 return new(true, response.Content.ToString() ?? "");
             }
             catch (Exception ex)
             {
-                return new(false, $"Webhook 通知错误: {ex.Message}");
+                return new(false, $"Webhook 閫氱煡閿欒: {ex.Message}");
             }
         }
     }
