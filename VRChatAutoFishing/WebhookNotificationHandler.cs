@@ -2,7 +2,6 @@ using System;
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace VRChatAutoFishing
@@ -17,6 +16,14 @@ namespace VRChatAutoFishing
         public WebhookNotificationHandler(string webhookUrl, string template, bool useProxy, string proxyAddress)
         {
             if (string.IsNullOrWhiteSpace(webhookUrl))
+            {
+                throw new ArgumentException("WebHook URL 不能为空。", nameof(webhookUrl));
+            }
+
+            _webhookUrl = webhookUrl;
+            _template = string.IsNullOrWhiteSpace(template)
+                ? "{\"msg_type\":\"text\",\"content\":{\"text\":\"{{message}}\"}}"
+                : template;
             _useProxy = useProxy;
 
             if (_useProxy && !string.IsNullOrWhiteSpace(proxyAddress))
@@ -27,23 +34,9 @@ namespace VRChatAutoFishing
                 }
                 catch (Exception ex) when (ex is UriFormatException || ex is ArgumentException)
                 {
-                    throw new ArgumentException($"ЧĴַ: {ex.Message}", nameof(proxyAddress));
+                    throw new ArgumentException($"代理地址无效: {ex.Message}", nameof(proxyAddress));
                 }
             }
-                var handler = new HttpClientHandler();
-                if (!_useProxy)
-                {
-                    handler.UseProxy = false;
-                }
-                else if (_customProxy != null)
-                {
-                    handler.Proxy = _customProxy;
-                }
-
-                using var client = new HttpClient(handler);
-
-            _webhookUrl = webhookUrl;
-            _template = template;
         }
 
 
@@ -51,20 +44,36 @@ namespace VRChatAutoFishing
         {
             try
             {
-                using var client = new HttpClient();
+                using var client = CreateHttpClient();
                 string payload = _template.Replace("{{message}}", message);
                 var content = new StringContent(payload, Encoding.UTF8, "application/json");
                 var response = await client.PostAsync(_webhookUrl, content);
                 if (!response.IsSuccessStatusCode)
                 {
-                    return new(false, $"Webhook 通知失败: {response.StatusCode}, Body: {response.Content}");
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                    return new(false, $"Webhook 通知失败: {response.StatusCode}, Body: {responseBody}");
                 }
-                return new(true, response.Content.ToString() ?? "");
+                string successMessage = await response.Content.ReadAsStringAsync();
+                return new(true, successMessage);
             }
             catch (Exception ex)
             {
                 return new(false, $"Webhook 通知错误: {ex.Message}");
             }
+        }
+
+        private HttpClient CreateHttpClient()
+        {
+            var handler = new HttpClientHandler();
+
+            if (_customProxy != null)
+            {
+                handler.Proxy = _customProxy;
+            }
+
+            handler.UseProxy = _useProxy;
+
+            return new HttpClient(handler, disposeHandler: true);
         }
     }
 }
