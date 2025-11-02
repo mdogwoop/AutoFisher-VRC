@@ -1,0 +1,65 @@
+name: CI - Build
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - name: win-x64
+            runner: windows-latest
+            rid: win-x64
+            archive: zip
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: (Windows) Set code page to 936
+        if: matrix.rid == 'win-x64'
+        run: chcp 936
+
+      - name: (Windows) Fix encoding (GBK -> UTF8)
+        if: matrix.rid == 'win-x64'
+        working-directory: ${{ github.workspace }}
+        run: pwsh -NoProfile -NonInteractive -Command "& './tools/fix-encoding.ps1' -Path . -WhatIf:$false"
+
+      - name: Restore
+        working-directory: VRChatAutoFishing
+        run: dotnet restore -r ${{ matrix.rid }} "VRChatAutoFishing.csproj"
+
+      - name: Publish
+        working-directory: VRChatAutoFishing
+        run: |
+          dotnet publish "VRChatAutoFishing.csproj" -c Release  -p:DebugType=None -p:DebugSymbols=false -o ./publish --no-restore
+          dotnet publish "VRChatAutoFishing.csproj" -c ReleaseWithRuntime  -p:DebugType=None -p:DebugSymbols=false -o ./publish --no-restore
+
+      - name: Upload Build Artifact - Non-Runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.name }}
+          path: ${{ github.workspace }}/VRChatAutoFishing/publish/VRChatAutoFishing.exe
+
+      - name: Upload Build Artifact - With-Runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.name }}-with-runtime
+          path: ${{ github.workspace }}/VRChatAutoFishing/publish/VRChatAutoFishingOneClick.exe
+      
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          files: |
+            ${{ github.workspace }}/VRChatAutoFishing/publish/VRChatAutoFishing.exe
+            ${{ github.workspace }}/VRChatAutoFishing/publish/VRChatAutoFishingOneClick.exe
