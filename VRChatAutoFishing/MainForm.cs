@@ -58,9 +58,11 @@ namespace VRChatAutoFishing
         // 特殊抛竿相关变量
         private double _actualCastTime = 0;
         private double _reelBackTime = 0;
+        private Button btnSettings;
 
         // Notifications
         private NotificationManager _notificationManager = new();
+        private SettingsForm _settingsForm = new();
 
         public MainForm()
         {
@@ -106,60 +108,6 @@ namespace VRChatAutoFishing
             SendClick(false);
         }
 
-        private void DoEnableWebHookConfigurationUI(bool enabled)
-        {
-            txtWebhookURL.Enabled = enabled;
-            txtWebHookBodyTemplate.Enabled = enabled;
-        }
-
-        private bool DoSetupWebHookConfiguration()
-        {
-            _notificationManager.Clear();
-            if (chbEnableNotification.Checked)
-            {
-                string url = txtWebhookURL.Text.Trim();
-                string template = txtWebHookBodyTemplate.Text.Trim();
-                try
-                {
-                    var webhookHandler = new WebhookNotificationHandler(url, template);
-                    _notificationManager.AddHandler(webhookHandler);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"配置 WebHook 通知失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private bool DoSetupNotificationsAndTest()
-        {
-            chbEnableNotification.Enabled = false;
-            DoEnableWebHookConfigurationUI(false);
-            if (!DoSetupWebHookConfiguration())
-            {
-                DoReleaseWebHookConfiguration();
-                return false;
-            }
-            // Test Notifications
-            var rc = _notificationManager.NotifyAll("自动钓鱼程序已启动！");
-            if (_notificationManager.HasHandlers() && !rc.success)
-            {
-                DoReleaseWebHookConfiguration();
-                MessageBox.Show($"无法启用自动钓鱼，WebHook 配置似乎有误：{rc.message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
-            }
-            return true;
-        }
-
-        private void DoReleaseWebHookConfiguration()
-        {
-            _notificationManager.Clear();
-            DoEnableWebHookConfigurationUI(chbEnableNotification.Checked);
-            chbEnableNotification.Enabled = true;
-        }
-
         private void btnToggle_Click(object sender, EventArgs e)
         {
             if (_isClosing) return;
@@ -168,8 +116,9 @@ namespace VRChatAutoFishing
 
             if (toBeRunning)
             {
-                if (!DoSetupNotificationsAndTest())
-                    return;
+                btnSettings.Enabled = false;
+                Managers managers = _settingsForm.GetManagers();
+                _notificationManager = managers.notificationManager;
 
                 _isRunning = toBeRunning;
                 _fishCount = 0;
@@ -188,7 +137,7 @@ namespace VRChatAutoFishing
             {
                 _isRunning = toBeRunning;
                 EmergencyRelease();
-                DoReleaseWebHookConfiguration();
+                btnSettings.Enabled = true;
             }
             btnToggle.Text = _isRunning ? "停止" : "开始";
         }
@@ -246,13 +195,13 @@ namespace VRChatAutoFishing
 
         private void UpdateStatusText(string text)
         {
-            if (lblStatus.InvokeRequired)
+            if (InvokeRequired)
             {
                 if (!_isClosing)
                 {
                     try
                     {
-                        lblStatus.Invoke(new Action<string>(UpdateStatusText), text);
+                        Invoke(new Action<string>(UpdateStatusText), text);
                     }
                     catch (ObjectDisposedException)
                     {
@@ -264,7 +213,7 @@ namespace VRChatAutoFishing
 
             if (!_isClosing)
             {
-                lblStatus.Text = $"[{text}]";
+                Text = $"[{text}] - 自动钓鱼";
             }
         }
 
@@ -786,24 +735,12 @@ namespace VRChatAutoFishing
             }
         }
 
-
-        private void chbEnableNotification_CheckedChanged(object sender, EventArgs e)
-        {
-            DoEnableWebHookConfigurationUI(chbEnableNotification.Checked);
-        }
-
         // Windows Form Designer generated code
         private TrackBar trackBarCastTime;
         private Label lblCastValue;
         private Button btnToggle;
         private Button btnHelp;
-        private Label lblStatus;
         private Label label1;
-        private CheckBox chbEnableNotification;
-        private TextBox txtWebhookURL;
-        private Label lblWebHookURL;
-        private Label lblWebHookBodyTemplate;
-        private TextBox txtWebHookBodyTemplate;
 
         private void InitializeComponent()
         {
@@ -812,13 +749,8 @@ namespace VRChatAutoFishing
             lblCastValue = new Label();
             btnToggle = new Button();
             btnHelp = new Button();
-            lblStatus = new Label();
             label1 = new Label();
-            chbEnableNotification = new CheckBox();
-            txtWebhookURL = new TextBox();
-            lblWebHookURL = new Label();
-            lblWebHookBodyTemplate = new Label();
-            txtWebHookBodyTemplate = new TextBox();
+            btnSettings = new Button();
             ((System.ComponentModel.ISupportInitialize)trackBarCastTime).BeginInit();
             SuspendLayout();
             // 
@@ -842,7 +774,7 @@ namespace VRChatAutoFishing
             // 
             // btnToggle
             // 
-            btnToggle.Location = new Point(95, 235);
+            btnToggle.Location = new Point(91, 65);
             btnToggle.Name = "btnToggle";
             btnToggle.Size = new Size(70, 30);
             btnToggle.TabIndex = 4;
@@ -851,20 +783,12 @@ namespace VRChatAutoFishing
             // 
             // btnHelp
             // 
-            btnHelp.Location = new Point(15, 235);
+            btnHelp.Location = new Point(15, 65);
             btnHelp.Name = "btnHelp";
             btnHelp.Size = new Size(70, 30);
             btnHelp.TabIndex = 3;
             btnHelp.Text = "说明";
             btnHelp.Click += btnHelp_Click;
-            // 
-            // lblStatus
-            // 
-            lblStatus.Location = new Point(170, 242);
-            lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(80, 20);
-            lblStatus.TabIndex = 5;
-            lblStatus.Text = "[状态]";
             // 
             // label1
             // 
@@ -874,79 +798,42 @@ namespace VRChatAutoFishing
             label1.TabIndex = 0;
             label1.Text = "蓄力时间:";
             // 
-            // chbEnableNotification
+            // btnSettings
             // 
-            chbEnableNotification.AutoSize = true;
-            chbEnableNotification.Location = new Point(15, 63);
-            chbEnableNotification.Name = "chbEnableNotification";
-            chbEnableNotification.Size = new Size(178, 21);
-            chbEnableNotification.TabIndex = 6;
-            chbEnableNotification.Text = "启用错误时 WebHook 通知";
-            chbEnableNotification.UseVisualStyleBackColor = true;
-            chbEnableNotification.CheckedChanged += chbEnableNotification_CheckedChanged;
-            // 
-            // txtWebhookURL
-            // 
-            txtWebhookURL.Enabled = false;
-            txtWebhookURL.Location = new Point(55, 93);
-            txtWebhookURL.Name = "txtWebhookURL";
-            txtWebhookURL.Size = new Size(193, 23);
-            txtWebhookURL.TabIndex = 7;
-            // 
-            // lblWebHookURL
-            // 
-            lblWebHookURL.AutoSize = true;
-            lblWebHookURL.Location = new Point(15, 96);
-            lblWebHookURL.Name = "lblWebHookURL";
-            lblWebHookURL.Size = new Size(34, 17);
-            lblWebHookURL.TabIndex = 8;
-            lblWebHookURL.Text = "URL:";
-            // 
-            // lblWebHookBodyTemplate
-            // 
-            lblWebHookBodyTemplate.AutoSize = true;
-            lblWebHookBodyTemplate.Location = new Point(12, 128);
-            lblWebHookBodyTemplate.Name = "lblWebHookBodyTemplate";
-            lblWebHookBodyTemplate.Size = new Size(72, 17);
-            lblWebHookBodyTemplate.TabIndex = 9;
-            lblWebHookBodyTemplate.Text = "\u007f请求体模板";
-            // 
-            // txtWebHookBodyTemplate
-            // 
-            txtWebHookBodyTemplate.Enabled = false;
-            txtWebHookBodyTemplate.Location = new Point(15, 152);
-            txtWebHookBodyTemplate.Multiline = true;
-            txtWebHookBodyTemplate.Name = "txtWebHookBodyTemplate";
-            txtWebHookBodyTemplate.Size = new Size(233, 77);
-            txtWebHookBodyTemplate.TabIndex = 10;
-            txtWebHookBodyTemplate.Text = "{\"msg_type\":\"text\",\"content\":{\"text\":\"{{message}}\"}}";
+            btnSettings.Location = new Point(167, 65);
+            btnSettings.Name = "btnSettings";
+            btnSettings.Size = new Size(77, 30);
+            btnSettings.TabIndex = 11;
+            btnSettings.Text = "高级设置";
+            btnSettings.UseVisualStyleBackColor = true;
+            btnSettings.Click += btnSettings_Click;
             // 
             // MainForm
             // 
             BackgroundImageLayout = ImageLayout.None;
-            ClientSize = new Size(260, 273);
-            Controls.Add(txtWebHookBodyTemplate);
-            Controls.Add(lblWebHookBodyTemplate);
-            Controls.Add(lblWebHookURL);
-            Controls.Add(txtWebhookURL);
-            Controls.Add(chbEnableNotification);
+            ClientSize = new Size(260, 104);
+            Controls.Add(btnSettings);
             Controls.Add(label1);
             Controls.Add(trackBarCastTime);
             Controls.Add(lblCastValue);
             Controls.Add(btnHelp);
             Controls.Add(btnToggle);
-            Controls.Add(lblStatus);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             Icon = (Icon)resources.GetObject("$this.Icon");
             MaximizeBox = false;
             Name = "MainForm";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "自动钓鱼v1.5.1";
+            Text = "自动钓鱼v1.5.2";
             FormClosing += MainForm_FormClosing;
             Load += MainForm_Load;
             ((System.ComponentModel.ISupportInitialize)trackBarCastTime).EndInit();
             ResumeLayout(false);
             PerformLayout();
+        }
+
+        private void btnSettings_Click(object sender, EventArgs e)
+        {
+            _settingsForm.ShowDialog();
         }
     }
 }
