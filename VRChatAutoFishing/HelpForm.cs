@@ -43,9 +43,9 @@ namespace VRChatAutoFishing
             int currentY = 60;
 
             // 加载三张图片
-            LoadImageWithFallback(mainPanel, "help_image1.png", "1.打开OSC", 1064, 341, ref currentY);
-            LoadImageWithFallback(mainPanel, "help_image2.png", "2.打开日志", 1064, 745, ref currentY);
-            LoadImageWithFallback(mainPanel, "help_image3.png", "3.把鱼钩静置到桶上", 1064, 745, ref currentY);
+            LoadImageWithFallback(mainPanel, "help_image1.jpg", "1.打开OSC", 1064, 341, ref currentY);
+            LoadImageWithFallback(mainPanel, "help_image2.jpg", "2.打开日志", 1064, 745, ref currentY);
+            LoadImageWithFallback(mainPanel, "help_image3.jpg", "3.把鱼钩静置到桶上", 1064, 745, ref currentY);
 
             // 第四步 - 只有文字说明
             Label step4Label = new Label();

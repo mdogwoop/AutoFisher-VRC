@@ -18,10 +18,18 @@ namespace VRChatAutoFishing
 
     public interface INotificationHandler
     {
-
         Task<NotifyResult> NotifyAsync(string message);
-    }
 
+        public NotifyResult Notify(string message) {
+            var task = Task.Run(async () =>
+            {
+                return (await NotifyAsync(message));
+
+            });
+            task.Wait();
+            return task.Result;
+        }
+    }
 
     public class NotificationManager
     {
