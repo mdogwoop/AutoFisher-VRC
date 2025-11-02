@@ -114,6 +114,17 @@ namespace VRChatAutoFishing
             UpdateWebhookProxyInputState(enabled && chbUseWebhookProxy.Checked);
         }
 
+        private void chbEnableNotification_CheckedChanged(object sender, EventArgs e)
+        {
+            if (_isClosing) return;
+
+            DoEnableWebHookConfigurationUI(chbEnableNotification.Checked);
+            if (!chbEnableNotification.Checked)
+            {
+                chbUseWebhookProxy.Checked = false;
+            }
+        }
+
         private bool DoSetupWebHookConfiguration()
         {
             _notificationManager.Clear();
@@ -783,7 +794,26 @@ namespace VRChatAutoFishing
 
         private void HandleError(string errorMessage)
         {
-            if (
+            if (InvokeRequired)
+            {
+                if (!_isClosing)
+                {
+                    BeginInvoke(new Action<string>(HandleError), errorMessage);
+                }
+                return;
+            }
+
+            if (_isClosing)
+                return;
+
+            EmergencyRelease();
+            DoReleaseWebHookConfiguration();
+            _isRunning = false;
+            btnToggle.Text = "开始";
+
+            MessageBox.Show(errorMessage, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
         private void chbUseWebhookProxy_CheckedChanged(object sender, EventArgs e)
         {
             bool enableProxyInput = chbEnableNotification.Checked && chbUseWebhookProxy.Checked;
@@ -794,58 +824,6 @@ namespace VRChatAutoFishing
         {
             txtWebhookProxy.Enabled = enabled;
             lblWebhookProxy.Enabled = enabled;
-        }
-
-        private CheckBox chbUseWebhookProxy;
-        private Label lblWebhookProxy;
-        private TextBox txtWebhookProxy;
-            chbUseWebhookProxy = new CheckBox();
-            lblWebhookProxy = new Label();
-            txtWebhookProxy = new TextBox();
-            btnToggle.Location = new Point(95, 298);
-            btnHelp.Location = new Point(15, 298);
-            lblStatus.Location = new Point(170, 305);
-            // chbUseWebhookProxy
-            // 
-            chbUseWebhookProxy.AutoSize = true;
-            chbUseWebhookProxy.Enabled = false;
-            chbUseWebhookProxy.Location = new Point(15, 126);
-            chbUseWebhookProxy.Name = "chbUseWebhookProxy";
-            chbUseWebhookProxy.Size = new Size(164, 21);
-            chbUseWebhookProxy.TabIndex = 8;
-            chbUseWebhookProxy.Text = "ʹ WebHook HTTP ";
-            chbUseWebhookProxy.UseVisualStyleBackColor = true;
-            chbUseWebhookProxy.CheckedChanged += chbUseWebhookProxy_CheckedChanged;
-            // 
-            // lblWebhookProxy
-            // 
-            lblWebhookProxy.AutoSize = true;
-            lblWebhookProxy.Enabled = false;
-            lblWebhookProxy.Location = new Point(15, 153);
-            lblWebhookProxy.Name = "lblWebhookProxy";
-            lblWebhookProxy.Size = new Size(74, 17);
-            lblWebhookProxy.TabIndex = 10;
-            lblWebhookProxy.Text = "HTTP :";
-            // 
-            // txtWebhookProxy
-            // 
-            txtWebhookProxy.Enabled = false;
-            txtWebhookProxy.Location = new Point(15, 173);
-            txtWebhookProxy.Name = "txtWebhookProxy";
-            txtWebhookProxy.PlaceholderText = "http://127.0.0.1:8888";
-            txtWebhookProxy.Size = new Size(233, 23);
-            txtWebhookProxy.TabIndex = 9;
-            // 
-            lblWebHookBodyTemplate.Location = new Point(12, 204);
-            lblWebHookBodyTemplate.TabIndex = 10;
-            txtWebHookBodyTemplate.Location = new Point(15, 228);
-            txtWebHookBodyTemplate.Size = new Size(233, 60);
-            txtWebHookBodyTemplate.TabIndex = 11;
-            txtWebHookBodyTemplate.Text = "{\\"msg_type\\":\\"text\\",\\"content\\":{\\"text\\":\\"{{message}}\\"}}";
-            ClientSize = new Size(260, 340);
-            Controls.Add(txtWebhookProxy);
-            Controls.Add(lblWebhookProxy);
-            Controls.Add(chbUseWebhookProxy);
         }
 
         // Windows Form Designer generated code
@@ -860,6 +838,9 @@ namespace VRChatAutoFishing
         private Label lblWebHookURL;
         private Label lblWebHookBodyTemplate;
         private TextBox txtWebHookBodyTemplate;
+        private CheckBox chbUseWebhookProxy;
+        private Label lblWebhookProxy;
+        private TextBox txtWebhookProxy;
 
         private void InitializeComponent()
         {
@@ -875,11 +856,14 @@ namespace VRChatAutoFishing
             lblWebHookURL = new Label();
             lblWebHookBodyTemplate = new Label();
             txtWebHookBodyTemplate = new TextBox();
+            chbUseWebhookProxy = new CheckBox();
+            lblWebhookProxy = new Label();
+            txtWebhookProxy = new TextBox();
             ((System.ComponentModel.ISupportInitialize)trackBarCastTime).BeginInit();
             SuspendLayout();
-            // 
+            //
             // trackBarCastTime
-            // 
+            //
             trackBarCastTime.Location = new Point(80, 12);
             trackBarCastTime.Maximum = 17;
             trackBarCastTime.Name = "trackBarCastTime";
@@ -887,51 +871,51 @@ namespace VRChatAutoFishing
             trackBarCastTime.TabIndex = 1;
             trackBarCastTime.Value = 17;
             trackBarCastTime.Scroll += trackBarCastTime_Scroll;
-            // 
+            //
             // lblCastValue
-            // 
+            //
             lblCastValue.Location = new Point(215, 15);
             lblCastValue.Name = "lblCastValue";
             lblCastValue.Size = new Size(40, 20);
             lblCastValue.TabIndex = 2;
             lblCastValue.Text = "1.7秒";
-            // 
+            //
             // btnToggle
-            // 
-            btnToggle.Location = new Point(95, 235);
+            //
+            btnToggle.Location = new Point(95, 298);
             btnToggle.Name = "btnToggle";
             btnToggle.Size = new Size(70, 30);
             btnToggle.TabIndex = 4;
             btnToggle.Text = "开始";
             btnToggle.Click += btnToggle_Click;
-            // 
+            //
             // btnHelp
-            // 
-            btnHelp.Location = new Point(15, 235);
+            //
+            btnHelp.Location = new Point(15, 298);
             btnHelp.Name = "btnHelp";
             btnHelp.Size = new Size(70, 30);
             btnHelp.TabIndex = 3;
             btnHelp.Text = "说明";
             btnHelp.Click += btnHelp_Click;
-            // 
+            //
             // lblStatus
-            // 
-            lblStatus.Location = new Point(170, 242);
+            //
+            lblStatus.Location = new Point(170, 305);
             lblStatus.Name = "lblStatus";
             lblStatus.Size = new Size(80, 20);
             lblStatus.TabIndex = 5;
             lblStatus.Text = "[状态]";
-            // 
+            //
             // label1
-            // 
+            //
             label1.Location = new Point(15, 15);
             label1.Name = "label1";
             label1.Size = new Size(60, 20);
             label1.TabIndex = 0;
             label1.Text = "蓄力时间:";
-            // 
+            //
             // chbEnableNotification
-            // 
+            //
             chbEnableNotification.AutoSize = true;
             chbEnableNotification.Location = new Point(15, 63);
             chbEnableNotification.Name = "chbEnableNotification";
@@ -940,47 +924,81 @@ namespace VRChatAutoFishing
             chbEnableNotification.Text = "启用错误时 WebHook 通知";
             chbEnableNotification.UseVisualStyleBackColor = true;
             chbEnableNotification.CheckedChanged += chbEnableNotification_CheckedChanged;
-            // 
+            //
             // txtWebhookURL
-            // 
+            //
             txtWebhookURL.Enabled = false;
             txtWebhookURL.Location = new Point(55, 93);
             txtWebhookURL.Name = "txtWebhookURL";
             txtWebhookURL.Size = new Size(193, 23);
             txtWebhookURL.TabIndex = 7;
-            // 
+            //
             // lblWebHookURL
-            // 
+            //
             lblWebHookURL.AutoSize = true;
             lblWebHookURL.Location = new Point(15, 96);
             lblWebHookURL.Name = "lblWebHookURL";
             lblWebHookURL.Size = new Size(34, 17);
             lblWebHookURL.TabIndex = 8;
             lblWebHookURL.Text = "URL:";
-            // 
+            //
+            // chbUseWebhookProxy
+            //
+            chbUseWebhookProxy.AutoSize = true;
+            chbUseWebhookProxy.Enabled = false;
+            chbUseWebhookProxy.Location = new Point(15, 126);
+            chbUseWebhookProxy.Name = "chbUseWebhookProxy";
+            chbUseWebhookProxy.Size = new Size(164, 21);
+            chbUseWebhookProxy.TabIndex = 9;
+            chbUseWebhookProxy.Text = "使用 WebHook HTTP 代理";
+            chbUseWebhookProxy.UseVisualStyleBackColor = true;
+            chbUseWebhookProxy.CheckedChanged += chbUseWebhookProxy_CheckedChanged;
+            //
+            // lblWebhookProxy
+            //
+            lblWebhookProxy.AutoSize = true;
+            lblWebhookProxy.Enabled = false;
+            lblWebhookProxy.Location = new Point(15, 153);
+            lblWebhookProxy.Name = "lblWebhookProxy";
+            lblWebhookProxy.Size = new Size(74, 17);
+            lblWebhookProxy.TabIndex = 11;
+            lblWebhookProxy.Text = "HTTP 代理:";
+            //
+            // txtWebhookProxy
+            //
+            txtWebhookProxy.Enabled = false;
+            txtWebhookProxy.Location = new Point(15, 173);
+            txtWebhookProxy.Name = "txtWebhookProxy";
+            txtWebhookProxy.PlaceholderText = "http://127.0.0.1:8888";
+            txtWebhookProxy.Size = new Size(233, 23);
+            txtWebhookProxy.TabIndex = 10;
+            //
             // lblWebHookBodyTemplate
-            // 
+            //
             lblWebHookBodyTemplate.AutoSize = true;
-            lblWebHookBodyTemplate.Location = new Point(12, 128);
+            lblWebHookBodyTemplate.Location = new Point(12, 204);
             lblWebHookBodyTemplate.Name = "lblWebHookBodyTemplate";
-            lblWebHookBodyTemplate.Size = new Size(72, 17);
-            lblWebHookBodyTemplate.TabIndex = 9;
-            lblWebHookBodyTemplate.Text = "\u007f请求体模板";
-            // 
+            lblWebHookBodyTemplate.Size = new Size(84, 17);
+            lblWebHookBodyTemplate.TabIndex = 12;
+            lblWebHookBodyTemplate.Text = "请求体模板:";
+            //
             // txtWebHookBodyTemplate
-            // 
+            //
             txtWebHookBodyTemplate.Enabled = false;
-            txtWebHookBodyTemplate.Location = new Point(15, 152);
+            txtWebHookBodyTemplate.Location = new Point(15, 228);
             txtWebHookBodyTemplate.Multiline = true;
             txtWebHookBodyTemplate.Name = "txtWebHookBodyTemplate";
-            txtWebHookBodyTemplate.Size = new Size(233, 77);
-            txtWebHookBodyTemplate.TabIndex = 10;
-            txtWebHookBodyTemplate.Text = "{\"msg_type\":\"text\",\"content\":{\"text\":\"{{message}}\"}}";
-            // 
+            txtWebHookBodyTemplate.Size = new Size(233, 60);
+            txtWebHookBodyTemplate.TabIndex = 13;
+            txtWebHookBodyTemplate.Text = "{\"msg_type\":\"text\",\"content\":{\"text\":\"{{message_json}}\"}}";
+            //
             // MainForm
-            // 
+            //
             BackgroundImageLayout = ImageLayout.None;
-            ClientSize = new Size(260, 273);
+            ClientSize = new Size(260, 340);
+            Controls.Add(txtWebhookProxy);
+            Controls.Add(lblWebhookProxy);
+            Controls.Add(chbUseWebhookProxy);
             Controls.Add(txtWebHookBodyTemplate);
             Controls.Add(lblWebHookBodyTemplate);
             Controls.Add(lblWebHookURL);
@@ -1004,5 +1022,6 @@ namespace VRChatAutoFishing
             ResumeLayout(false);
             PerformLayout();
         }
+
     }
 }
