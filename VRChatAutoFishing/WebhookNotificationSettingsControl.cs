@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -12,6 +13,33 @@ namespace VRChatAutoFishing
 {
     public partial class WebhookNotificationSettingsControl : UserControl
     {
+        public class WebhookSettings
+        {
+            public bool Enabled { get; set; }
+            public string? WebhookUrl { get; set; }
+            public string? BodyTemplate { get; set; }
+        }
+
+        public WebhookSettings SaveSettings() {
+            var settings = new WebhookSettings
+            {
+                Enabled = chbEnableNotification.Checked,
+                WebhookUrl = txtWebhookURL.Text,
+                BodyTemplate = txtWebHookBodyTemplate.Text
+            };
+            return settings;
+        }
+
+        public void LoadSettings(WebhookSettings? settings) {
+            if (settings == null)
+            {
+                return;
+            }
+            
+            chbEnableNotification.Checked = settings.Enabled;
+            txtWebhookURL.Text = settings.WebhookUrl;
+            txtWebHookBodyTemplate.Text = settings.BodyTemplate;
+        }
 
         public WebhookNotificationHandler? GetNotificationHandler()
         {

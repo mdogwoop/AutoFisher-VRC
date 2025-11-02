@@ -34,6 +34,7 @@ namespace VRChatAutoFishing
         private System.Timers.Timer _timeoutTimer;
         private System.Timers.Timer _statusDisplayTimer;
         private System.Timers.Timer _reelBackTimer;
+        private System.Timers.Timer _delaySaveTimer;
         private OSCClient _oscClient;
         private VRChatLogMonitor _logMonitor;
         private bool _firstCast = true;
@@ -43,7 +44,7 @@ namespace VRChatAutoFishing
         private ManualResetEvent _stopEvent = new(false);
 
         // 线程安全的参数存储
-        private double _castTime = 1.7;
+        private double _castTime;
         private const double TIMEOUT_MINUTES = 3.0;
 
         // 钓鱼统计相关变量
@@ -58,7 +59,6 @@ namespace VRChatAutoFishing
         // 特殊抛竿相关变量
         private double _actualCastTime = 0;
         private double _reelBackTime = 0;
-        private Button btnSettings;
 
         // Notifications
         private NotificationManager _notificationManager = new();
@@ -67,11 +67,12 @@ namespace VRChatAutoFishing
         public MainForm()
         {
             InitializeComponent();
-            InitializeComponents();
+            InitializeFisherComponents();
         }
 
-        private void InitializeComponents()
+        private void InitializeFisherComponents()
         {
+            AppSettings appSettings = _settingsForm.InitializeSavedValues();
             _oscClient = new OSCClient("127.0.0.1", 9000);
             _logMonitor = new VRChatLogMonitor();
             _logMonitor.OnDataSaved += FishOnHook;
@@ -90,15 +91,42 @@ namespace VRChatAutoFishing
             _reelBackTimer.AutoReset = false;
             _reelBackTimer.Elapsed += PerformReelBack;
 
+            _delaySaveTimer = new();
+            _delaySaveTimer.AutoReset = false;
+            _delaySaveTimer.Elapsed += DelaySaveTimer_Elapsed;
+
             _lastCycleEnd = DateTime.Now;
             _lastCastTime = DateTime.MinValue;
 
             trackBarCastTime.Minimum = 0;
             trackBarCastTime.Maximum = 17;
-            trackBarCastTime.Value = 17;
+            trackBarCastTime.Value = (int)((appSettings.castingTime ?? AppSettings.DefaultCastingTime) * 10.0);
 
-            UpdateCastTimeLabel();
             UpdateParameters();
+            UpdateCastTimeLabel();
+        }
+
+        private void DelaySaveTimer_Elapsed(object? sender, ElapsedEventArgs e)
+        {
+            _settingsForm.SaveSettingsToFile(new AppSettings
+            {
+                castingTime = GetCastTime(),
+            });
+        }
+
+        private void DelayToSaveSettings()
+        {
+            if (_delaySaveTimer.Enabled)
+            {
+                _delaySaveTimer.Stop();
+            }
+            _delaySaveTimer.Interval = 2000;
+            _delaySaveTimer.Start();
+        }
+
+        private void ClearDelayToSaveSettings() {
+            if (_delaySaveTimer.Enabled)
+                _delaySaveTimer.Stop();
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -250,7 +278,10 @@ namespace VRChatAutoFishing
             {
                 if (!_isClosing)
                 {
-                    HandleError($"钓鱼线程错误: {ex.Message}");
+                    if (!_notificationManager.NotifyAll($"钓鱼线程错误: {ex.Message}").success)
+                    {
+                        MessageBox.Show($"钓鱼线程错误: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
             }
         }
@@ -415,6 +446,7 @@ namespace VRChatAutoFishing
                 if (!_isClosing)
                 {
                     PerformCast();
+                    _notificationManager.NotifyAll("钓鱼超时，正在重试！如果此事件持续，请检查游戏状态。");
                 }
             }
             finally
@@ -488,12 +520,12 @@ namespace VRChatAutoFishing
                 }
                 else if (_savedDataCount == 1)
                 {
-                    _currentAction = ActionState.kTimeoutReelSingle; // 修改为枚举值
+                    _currentAction = ActionState.kTimeoutReelSingle;
                 }
                 else
                 {
                     _currentAction = ActionState.kTimeoutReel;
-                    _notificationManager.NotifyAll("收杆超时，未检测到SAVED DATA事件！如果此事件持续，请检查游戏状态。");
+                    _notificationManager.NotifyAll("鱼已上钩但收杆仍超时，未检测到SAVED DATA事件！如果此事件持续，请检查游戏状态。");
                 }
                 _showingFishCount = false;
                 UpdateStatusText(_currentAction);
@@ -724,15 +756,17 @@ namespace VRChatAutoFishing
             if (_isClosing) return;
             UpdateParameters();
             UpdateCastTimeLabel();
+            DelayToSaveSettings();
         }
 
-        private void HandleError(string errorMessage)
+        private void btnSettings_Click(object sender, EventArgs e)
         {
-            if (
-                !_notificationManager.NotifyAll($"错误: {errorMessage}").success)
+            ClearDelayToSaveSettings();
+            _settingsForm.ShowDialog();
+            _settingsForm.SaveSettingsToFile(new AppSettings
             {
-                MessageBox.Show(errorMessage, "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+                castingTime = GetCastTime(),
+            });
         }
 
         // Windows Form Designer generated code
@@ -741,6 +775,7 @@ namespace VRChatAutoFishing
         private Button btnToggle;
         private Button btnHelp;
         private Label label1;
+        private Button btnSettings;
 
         private void InitializeComponent()
         {
@@ -823,7 +858,7 @@ namespace VRChatAutoFishing
             MaximizeBox = false;
             Name = "MainForm";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "自动钓鱼v1.5.2";
+            Text = "自动钓鱼v1.5.3";
             FormClosing += MainForm_FormClosing;
             Load += MainForm_Load;
             ((System.ComponentModel.ISupportInitialize)trackBarCastTime).EndInit();
@@ -831,9 +866,5 @@ namespace VRChatAutoFishing
             PerformLayout();
         }
 
-        private void btnSettings_Click(object sender, EventArgs e)
-        {
-            _settingsForm.ShowDialog();
-        }
     }
 }
