@@ -74,9 +74,7 @@ namespace VRChatAutoFishing
         {
             AppSettings appSettings = _settingsForm.InitializeSavedValues();
             _oscClient = new OSCClient("127.0.0.1", 9000);
-            _logMonitor = new VRChatLogMonitor();
-            _logMonitor.OnDataSaved += FishOnHook;
-            _logMonitor.OnFishPickup += OnFishPickupDetected;
+            _logMonitor = new VRChatLogMonitor(FishOnHook, OnFishPickupDetected);
 
             _timeoutTimer = new System.Timers.Timer();
             _timeoutTimer.Elapsed += HandleTimeout;
@@ -124,19 +122,20 @@ namespace VRChatAutoFishing
             _delaySaveTimer.Start();
         }
 
-        private void ClearDelayToSaveSettings() {
+        private void ClearDelayToSaveSettings()
+        {
             if (_delaySaveTimer.Enabled)
                 _delaySaveTimer.Stop();
         }
 
-        private void MainForm_Load(object sender, EventArgs e)
+        private void MainForm_Load(object? sender, EventArgs e)
         {
             _logMonitor.StartMonitoring();
             _statusDisplayTimer.Start();
             SendClick(false);
         }
 
-        private void btnToggle_Click(object sender, EventArgs e)
+        private void btnToggle_Click(object? sender, EventArgs e)
         {
             if (_isClosing) return;
 
@@ -170,7 +169,7 @@ namespace VRChatAutoFishing
             btnToggle.Text = _isRunning ? "Í£Ö¹" : "¿ªÊ¼";
         }
 
-        private void UpdateStatusDisplay(object sender, ElapsedEventArgs e)
+        private void UpdateStatusDisplay(object? sender, ElapsedEventArgs e)
         {
             if (_isClosing || !_isRunning) return;
 
@@ -286,7 +285,7 @@ namespace VRChatAutoFishing
             }
         }
 
-        private void btnHelp_Click(object sender, EventArgs e)
+        private void btnHelp_Click(object? sender, EventArgs e)
         {
             if (_isClosing) return;
             ShowHelpDialog();
@@ -390,7 +389,7 @@ namespace VRChatAutoFishing
             _timeoutTimer.Start();
         }
 
-        private void HandleTimeout(object sender, ElapsedEventArgs e)
+        private void HandleTimeout(object? sender, ElapsedEventArgs e)
         {
             if (_isRunning && !_isClosing && _currentAction == ActionState.kWaitForFish)
             {
@@ -532,7 +531,7 @@ namespace VRChatAutoFishing
             }
         }
 
-        private void PerformReelBack(object sender, ElapsedEventArgs e)
+        private void PerformReelBack(object? sender, ElapsedEventArgs e)
         {
             if (_isClosing || !_isRunning) return;
 
@@ -713,7 +712,7 @@ namespace VRChatAutoFishing
             }
         }
 
-        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)
         {
             _isClosing = true;
 
@@ -751,7 +750,7 @@ namespace VRChatAutoFishing
             _stopEvent?.Close();
         }
 
-        private void trackBarCastTime_Scroll(object sender, EventArgs e)
+        private void trackBarCastTime_Scroll(object? sender, EventArgs e)
         {
             if (_isClosing) return;
             UpdateParameters();
@@ -759,7 +758,7 @@ namespace VRChatAutoFishing
             DelayToSaveSettings();
         }
 
-        private void btnSettings_Click(object sender, EventArgs e)
+        private void btnSettings_Click(object? sender, EventArgs e)
         {
             ClearDelayToSaveSettings();
             _settingsForm.ShowDialog();

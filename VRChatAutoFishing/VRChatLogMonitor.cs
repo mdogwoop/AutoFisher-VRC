@@ -1,32 +1,37 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace VRChatAutoFishing
 {
     public class VRChatLogMonitor
     {
-        public event Action OnDataSaved;
-        public event Action OnFishPickup;
+        private event Action OnDataSaved;
+        private event Action OnFishPickup;
 
-        private FileSystemWatcher _watcher;
-        private string _currentLogPath;
+        private FileSystemWatcher? _watcher;
+        private string? _currentLogPath;
         private long _filePosition;
         private readonly object _lockObject = new object();
-        private Thread _monitorThread;
-        private bool _isMonitoring;
-        private bool _isStopping; // 添加停止标志
+        private CancellationTokenSource? _cancellationTokenSource;
 
-        public VRChatLogMonitor()
+        public VRChatLogMonitor(Action onDataSaved, Action onFishPickup)
         {
             _filePosition = 0;
-            _isMonitoring = false;
-            _isStopping = false;
+            OnDataSaved = onDataSaved;
+            OnFishPickup = onFishPickup;
         }
 
         public void StartMonitoring()
         {
-            if (_isMonitoring) return;
+            if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+            {
+                return; // Already monitoring
+            }
+
+            _cancellationTokenSource = new CancellationTokenSource();
+            var token = _cancellationTokenSource.Token;
 
             string logDir = GetVRChatLogDirectory();
             if (!Directory.Exists(logDir))
@@ -36,105 +41,112 @@ namespace VRChatAutoFishing
             }
 
             _watcher = new FileSystemWatcher(logDir, "output_log_*.txt");
-            _watcher.Created += OnLogFileCreated;
-            _watcher.Changed += OnLogFileChanged;
+            _watcher.Created += (sender, e) =>
+            {
+                if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+                {
+                    UpdateLogFile();
+                }
+            };
+            _watcher.Changed += (sender, e) =>
+            {
+                if (e.FullPath == _currentLogPath)
+                {
+                    ProcessLogChanges();
+                }
+            };
             _watcher.EnableRaisingEvents = true;
 
+            // Start a background task to periodically check for new log files
+            Task.Run(() => PeriodicLogFileCheck(token), token);
+            // Initial check
             UpdateLogFile();
-
-            _isMonitoring = true;
-            _isStopping = false;
-            _monitorThread = new Thread(MonitorLoop);
-            _monitorThread.IsBackground = true;
-            _monitorThread.Start();
         }
 
         public void StopMonitoring()
         {
-            _isStopping = true;
-            _isMonitoring = false;
-
-            _watcher?.Dispose();
-            _watcher = null;
-
-            if (_monitorThread != null && _monitorThread.IsAlive)
+            if (_cancellationTokenSource != null)
             {
-                if (!_monitorThread.Join(1000)) // 等待1秒线程结束
-                {
-                    try
-                    {
-                        _monitorThread.Abort();
-                    }
-                    catch
-                    {
-                        // 忽略中止异常
-                    }
-                }
+                _cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Dispose();
+                _cancellationTokenSource = null;
+            }
+
+            if (_watcher != null)
+            {
+                _watcher.EnableRaisingEvents = false;
+                _watcher.Dispose();
+                _watcher = null;
             }
         }
 
-        private void MonitorLoop()
+        private async Task PeriodicLogFileCheck(CancellationToken token)
         {
-            while (_isMonitoring && !_isStopping)
+            while (!token.IsCancellationRequested)
             {
                 try
                 {
-                    Thread.Sleep(1000);
-
-                    if (_isStopping) break;
-
-                    if (UpdateLogFile())
-                        continue;
-
-                    string content = ReadNewContent();
-                    if (!string.IsNullOrEmpty(content) && !_isStopping)
-                    {
-                        if (content.Contains("SAVED DATA"))
-                        {
-                            OnDataSaved?.Invoke();
-                        }
-
-                        if (content.Contains("Fish Pickup attached to rod Toggles(True)"))
-                        {
-                            OnFishPickup?.Invoke();
-                        }
-                    }
+                    UpdateLogFile();
+                    ProcessLogChanges();
+                    await Task.Delay(TimeSpan.FromSeconds(1), token);
                 }
-                catch (ThreadAbortException)
+                catch (TaskCanceledException)
                 {
-                    break;
+                    break; // Task was cancelled, exit loop
                 }
                 catch (Exception ex)
                 {
-                    if (!_isStopping)
-                    {
-                        Console.WriteLine($"日志监视错误: {ex.Message}");
-                    }
+                    Console.WriteLine($"日志文件定期检查出错: {ex.Message}");
                 }
             }
         }
 
-        // 其他方法保持不变...
+        private void ProcessLogChanges()
+        {
+            if (_cancellationTokenSource == null || _cancellationTokenSource.IsCancellationRequested)
+                return;
+
+            string content = ReadNewContent();
+            if (!string.IsNullOrEmpty(content))
+            {
+                if (content.Contains("SAVED DATA"))
+                {
+                    // TODO：Thread-safe event invocation
+                    OnDataSaved?.Invoke();
+                }
+
+                if (content.Contains("Fish Pickup attached to rod Toggles(True)"))
+                {
+                    // TODO：Thread-safe event invocation
+                    OnFishPickup?.Invoke();
+                }
+            }
+        }
+
         private string GetVRChatLogDirectory()
         {
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             return Path.GetFullPath(Path.Combine(appData, @"..\LocalLow\VRChat\VRChat"));
         }
 
+        // Thread-safe
         private bool UpdateLogFile()
         {
-            string newLog = FindLatestLog();
-            if (newLog != _currentLogPath)
+            string? newLog = FindLatestLog();
+            lock (_lockObject)
             {
-                Console.WriteLine($"检测到新日志文件: {newLog}");
-                _currentLogPath = newLog;
-                _filePosition = 0;
-                return true;
+                if (newLog != null && newLog != _currentLogPath)
+                {
+                    Console.WriteLine($"检测到新日志文件: {newLog}");
+                    _currentLogPath = newLog;
+                    _filePosition = 0;
+                    return true;
+                }
             }
             return false;
         }
 
-        private string FindLatestLog()
+        private string? FindLatestLog()
         {
             string logDir = GetVRChatLogDirectory();
             if (!Directory.Exists(logDir))
@@ -144,7 +156,7 @@ namespace VRChatAutoFishing
             if (logFiles.Length == 0)
                 return null;
 
-            string latestFile = null;
+            string? latestFile = null;
             DateTime latestTime = DateTime.MinValue;
 
             foreach (string file in logFiles)
@@ -160,6 +172,7 @@ namespace VRChatAutoFishing
             return latestFile;
         }
 
+        // Thread-safe
         public string ReadNewContent()
         {
             lock (_lockObject)
@@ -186,26 +199,13 @@ namespace VRChatAutoFishing
                 }
                 catch (Exception ex)
                 {
-                    if (!_isStopping)
+                    if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
                     {
                         Console.WriteLine($"读取日志失败: {ex.Message}");
                     }
                     return string.Empty;
                 }
             }
-        }
-
-        private void OnLogFileCreated(object sender, FileSystemEventArgs e)
-        {
-            if (!_isStopping)
-            {
-                UpdateLogFile();
-            }
-        }
-
-        private void OnLogFileChanged(object sender, FileSystemEventArgs e)
-        {
-            // 文件变化处理
         }
     }
 }
