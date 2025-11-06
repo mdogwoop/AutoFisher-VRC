@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.IO;
@@ -19,7 +19,7 @@ namespace VRChatAutoFishing
         private void SetupHelpForm()
         {
             this.Text = "使用说明";
-            this.ClientSize = new Size(610, 1240);
+            this.ClientSize = new Size(610, 1000);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -32,11 +32,11 @@ namespace VRChatAutoFishing
             mainPanel.BackColor = Color.White;
             this.Controls.Add(mainPanel);
 
-            // 作者名称
+            // 标题
             Label authorLabel = new Label();
             authorLabel.Location = new Point(0, 20);
             authorLabel.Size = new Size(580, 30);
-            authorLabel.Text = "作者：arcxingye";
+            authorLabel.Text = "使用说明";
             authorLabel.Font = new Font("微软雅黑", 14, FontStyle.Bold);
             authorLabel.TextAlign = ContentAlignment.MiddleCenter;
             authorLabel.ForeColor = Color.DarkBlue;
@@ -60,11 +60,11 @@ namespace VRChatAutoFishing
 
             currentY += 40;
 
-            // 第四步详细说明
+            // 其它说明
             Label step4DescLabel = new Label();
             step4DescLabel.Location = new Point(25, currentY);
             step4DescLabel.Size = new Size(550, 60);
-            step4DescLabel.Text = "通常，做完这些就可以开始自动钓鱼了，可以后台挂着VRC玩别的游戏去。软件可能会随着世界更新而失效，注意更新，没有更新要么懒得要么真没办法了。本软件以合法性为主，仅仅只是个OSC程序，非常安全，不存在风险。";
+            step4DescLabel.Text = "通常，做完这些就可以开始自动钓鱼了，可以后台挂着VRC玩别的游戏去。软件可能会随着世界更新而失效，注意更新，没有更新要么懒得要么真没办法了。本软件以合法性为主，仅仅只是个OSC程序，安全性较高。";
             step4DescLabel.Font = new Font("微软雅黑", 10, FontStyle.Regular);
             step4DescLabel.TextAlign = ContentAlignment.TopLeft;
             mainPanel.Controls.Add(step4DescLabel);
@@ -74,44 +74,47 @@ namespace VRChatAutoFishing
             // 第五步排查
             Label step5DescLabel = new Label();
             step5DescLabel.Location = new Point(25, currentY);
-            step5DescLabel.Size = new Size(550, 160);
-            step5DescLabel.Text = "如果还不行，尝试\n1.关闭杀毒软件以及系统防火墙\n2.确认你的VRCHAT的OSC端口是9000，不要修改端口\n3.不能多开VRCHAT客户端，只允许一个客户端存在\n4.确保其他软件不会占用9000端口，例如VRCFT、极个别加速器会占用\n5.右键以管理员身份运行\n6.世界发生错误时也会失效，详见天空是否出现错误提示";
+            step5DescLabel.Size = new Size(550, 350);
+            step5DescLabel.Text = "排错指南\n" +
+                "[钓鱼状态有变化但无抛竿]OSC问题\n" +
+                "1.确保已打开OSC\n" +
+                "2.确保OSC端口为9000，打开OSC调试可以看到端口\n" +
+                "3.如果你的OSC端口不是9000，到本软件设置里改成相应的端口\n" +
+                "4.确保其它软件不会占用端口，例如VRCFT、个别加速器\n\n" +
+                "[钓鱼状态无变化]无法读取日志\n" +
+                "1.确保日志调到Full\n" +
+                "2.尝试右键以管理员身份运行\n" +
+                "3.确保世界没有发生错误，详见天空是否出现错误提示\n\n" +
+                "[其它注意事项]\n" +
+                "1.建议不要双开VRCHAT客户端\n" +
+                "2.建议不要开其它OSC软件\n\n" +
+                "功能提议/报告问题请发 Issues：";
             step5DescLabel.Font = new Font("微软雅黑", 10, FontStyle.Regular);
             step5DescLabel.TextAlign = ContentAlignment.TopLeft;
             mainPanel.Controls.Add(step5DescLabel);
 
-            currentY += 140;
+            currentY += 350;
 
-            // 美化关闭按钮
-            Button closeButton = new Button();
-            closeButton.Location = new Point(250, currentY + 20);
-            closeButton.Size = new Size(100, 35);
-            closeButton.Text = "关闭";
-
-            // 美化按钮样式
-            closeButton.BackColor = Color.SteelBlue;
-            closeButton.ForeColor = Color.White;
-            closeButton.Font = new Font("微软雅黑", 10, FontStyle.Bold);
-            closeButton.FlatStyle = FlatStyle.Flat;
-            closeButton.FlatAppearance.BorderSize = 0;
-            closeButton.FlatAppearance.MouseOverBackColor = Color.LightSteelBlue;
-            closeButton.FlatAppearance.MouseDownBackColor = Color.RoyalBlue;
-
-            // 添加阴影效果（通过边框模拟）
-            closeButton.FlatAppearance.BorderColor = Color.DarkSlateBlue;
-
-            // 添加圆角效果（需要自定义绘制）
-            closeButton.Paint += (sender, e) =>
+            // 可点击的超链接
+            LinkLabel linkLabel = new LinkLabel();
+            linkLabel.Location = new Point(25, currentY);
+            linkLabel.Size = new Size(550, 35);
+            linkLabel.Text = "https://github.com/arcxingye/AutoFisher-VRC";
+            linkLabel.LinkColor = Color.Blue;
+            linkLabel.Font = new Font("微软雅黑", 10, FontStyle.Underline);
+            linkLabel.Links.Add(0, linkLabel.Text.Length, linkLabel.Text);
+            linkLabel.LinkClicked += (sender, e) =>
             {
-                Button btn = (Button)sender;
-                using (Pen pen = new Pen(Color.DarkSlateBlue, 1))
+                try
                 {
-                    e.Graphics.DrawRectangle(pen, 0, 0, btn.Width - 1, btn.Height - 1);
+                    Process.Start(new ProcessStartInfo(e.Link.LinkData.ToString()) { UseShellExecute = true });
+                }
+                catch
+                {
+                    MessageBox.Show("无法打开链接，请手动访问。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             };
-
-            closeButton.Click += (s, e) => this.Close();
-            mainPanel.Controls.Add(closeButton);
+            mainPanel.Controls.Add(linkLabel);
         }
 
         private void LoadImageWithFallback(Panel parent, string imageName, string description, int originalWidth, int originalHeight, ref int currentY)
