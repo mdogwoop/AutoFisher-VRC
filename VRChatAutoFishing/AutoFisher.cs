@@ -105,7 +105,7 @@ namespace VRChatAutoFishing
             _reelTimeoutTimer = new System.Timers.Timer { AutoReset = false, SynchronizingObject = _context };
             _reelTimeoutTimer.Elapsed += PerformReelingTimeout;
 
-            _disabledCastReleaseTimer = new System.Timers.Timer { Interval = 30000, AutoReset = false, SynchronizingObject = _context };
+            _disabledCastReleaseTimer = new System.Timers.Timer { Interval = 40000, AutoReset = false, SynchronizingObject = _context };
             _disabledCastReleaseTimer.Elapsed += DisabledCastReleaseTimerElapsed;
 
             //_lastCycleEnd = DateTime.Now;
@@ -393,8 +393,7 @@ namespace VRChatAutoFishing
                 Console.WriteLine("FishOnHook: disabled cast, just release for a while");
                 _lastDisabledCastFishOnHook = DateTime.Now;
                 ReleaseForDuration(50);
-                // 重置计时器，这个计时器的作用是兜底，确保30s有一次收杆
-                // 为什么是30s？因为根据实测，不抛竿钓鱼效率平均在33s左右每条，其中5~12s是收杆时间，实际等待时间是20s左右，以30s作为兜底是合理的
+                // 重置计时器，这个计时器的作用是兜底，确保40s有一次收杆
                 _disabledCastReleaseTimer.Stop();
                 _disabledCastReleaseTimer.Start();
                 return;
