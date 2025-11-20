@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading;
 using System.Timers;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace VRChatAutoFishing
 {
@@ -26,6 +27,7 @@ namespace VRChatAutoFishing
         {
             InitializeComponent();
             ThemeUtils.ApplyTheme(this);
+            SystemEvents.UserPreferenceChanged += SystemEvents_UserPreferenceChanged;
             _fullTitle = GetTitleWithVersion();
             Text = _fullTitle;
 
@@ -46,6 +48,17 @@ namespace VRChatAutoFishing
             chbCast.Checked = appSettings.Cast ?? true;
             ClearDelayToSaveSettings();
             UpdateCastTimeLabel();
+        }
+
+        private void SystemEvents_UserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+        {
+            if (e.Category == UserPreferenceCategory.General || e.Category == UserPreferenceCategory.VisualStyle)
+            {
+                Invoke((System.Windows.Forms.MethodInvoker)delegate
+                {
+                    ThemeUtils.ApplyTheme(this);
+                });
+            }
         }
 
         private string GetTitleWithVersion()
@@ -198,6 +211,7 @@ namespace VRChatAutoFishing
 
         private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)
         {
+            SystemEvents.UserPreferenceChanged -= SystemEvents_UserPreferenceChanged;
             _autoFisher?.Dispose();
             _delaySaveTimer?.Dispose();
         }
