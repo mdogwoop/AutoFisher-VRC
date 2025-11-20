@@ -25,6 +25,7 @@ namespace VRChatAutoFishing
         public MainForm()
         {
             InitializeComponent();
+            ThemeUtils.ApplyTheme(this);
             _fullTitle = GetTitleWithVersion();
             Text = _fullTitle;
 
@@ -52,9 +53,9 @@ namespace VRChatAutoFishing
             var version = Assembly.GetExecutingAssembly().GetName().Version;
             if (version != null)
             {
-                return $"×Ô¶¯µöÓã v{version.Major}.{version.Minor}.{version.Build}";
+                return $"è‡ªåŠ¨é’“é±¼ v{version.Major}.{version.Minor}.{version.Build}";
             }
-            return "×Ô¶¯µöÓã";
+            return "è‡ªåŠ¨é’“é±¼";
         }
 
         private void CreateFisher()
@@ -81,7 +82,7 @@ namespace VRChatAutoFishing
                     _errorCount++;
                     if (_managers?.notificationManager.NotifyAll(errorMessage).success ?? false)
                         return;
-                    MessageBox.Show(this, errorMessage, "ÑÏÖØ´íÎó", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(this, errorMessage, "ä¸¥é‡é”™è¯¯", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 });
 
             _autoFisher.OnFishCaught += fishCount => Invoke( () => { _fishCount = fishCount; DoUpdateAnalysis(); });
@@ -94,7 +95,7 @@ namespace VRChatAutoFishing
             if ((_autoFisher.CastTime == AutoFisher.kDisabledCastTime && chbCast.Checked) ||
                 (_autoFisher.CastTime != AutoFisher.kDisabledCastTime && !chbCast.Checked))
             {
-                // ´ËÊôĞÔ²»Ö§³Ö¶¯Ì¬¸ü¸Ä£¬ÖØĞÂ´´½¨Ò»¸öAutoFisherÊµÀı
+                // æ­¤å±æ€§ä¸æ”¯æŒåŠ¨æ€æ›´æ”¹ï¼Œé‡æ–°åˆ›å»ºä¸€ä¸ªAutoFisherå®ä¾‹
                 CreateFisher();
                 _autoFisher?.Start();
                 return;
@@ -111,8 +112,8 @@ namespace VRChatAutoFishing
             TimeSpan totalTime = _endTime - _startTime;
             double avgTimePerFish = _fishCount > 0 ? totalTime.TotalSeconds / _fishCount : 0;
 
-            txtAnalysis.Text = $"ÒÑµö£º{_fishCount} Ìõ£¬¹²ÓÃÊ±£º{totalTime:hh\\:mm\\:ss}\r\n" +
-                $"Æ½¾ùºÄÊ±£º{avgTimePerFish:F1} Ãë/Ìõ£¬´íÎó´ÎÊı£º{_errorCount}";
+            txtAnalysis.Text = $"å·²é’“ï¼š{_fishCount} æ¡ï¼Œå…±ç”¨æ—¶ï¼š{totalTime:hh\\:mm\\:ss}\r\n" +
+                $"å¹³å‡è€—æ—¶ï¼š{avgTimePerFish:F1} ç§’/æ¡ï¼Œé”™è¯¯æ¬¡æ•°ï¼š{_errorCount}";
         }
 
         private void DelaySaveTimer_Elapsed(object? sender, ElapsedEventArgs e)
@@ -174,7 +175,7 @@ namespace VRChatAutoFishing
                 _updateAnalysisTimer.Stop();
                 btnSettings.Enabled = true;
             }
-            btnToggle.Text = _isFisherRunning ? "  Í£Ö¹" : "  ¿ªÊ¼";
+            btnToggle.Text = _isFisherRunning ? "  åœæ­¢" : "  å¼€å§‹";
             btnToggle.ImageIndex = _isFisherRunning ? 4 : 2;
         }
 
@@ -192,7 +193,7 @@ namespace VRChatAutoFishing
 
         private void UpdateCastTimeLabel()
         {
-            lblCastValue.Text = $"{trackBarCastTime.Value / 10.0:0.0}Ãë";
+            lblCastValue.Text = $"{trackBarCastTime.Value / 10.0:0.0}ç§’";
         }
 
         private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)

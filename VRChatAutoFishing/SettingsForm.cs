@@ -17,6 +17,7 @@ namespace VRChatAutoFishing
         public SettingsForm()
         {
             InitializeComponent();
+            ThemeUtils.ApplyTheme(this);
             tbOSCAddr.Validating += TbOSCIPAddr_Validating;
             tbOSCPort.Validating += TbOSCPort_Validating;
         }

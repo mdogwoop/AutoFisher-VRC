@@ -15,6 +15,7 @@ namespace VRChatAutoFishing
         {
             InitializeComponent();
             SetupHelpForm();
+            ThemeUtils.ApplyTheme(this);
         }
 
         private void SetupHelpForm()
